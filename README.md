@@ -69,54 +69,89 @@ void loop() {
 // 블루투스모듈(HM-10) 의 TX가 아두이노의 D2
 // 블루투스모듈(HM-10) 의 RX가 아두이노의 D3
 SoftwareSerial BTSerial(2,3);
- 
+
 Servo myservo;
-int pos = 0; // servo 위치
 
 
-// 전처리
+// hyper-parameter
+int pos_init = 95; // 평행 각도 (기준점)
+int angle = 40; // 움직일 각도
+int angleSpeed = 2; // 한번 움직일 때의 각도
+int delayTime = 20; // 한번 움직일 때의 대기시간
+
+int pos_on = pos_init - angle;
+int pos_off = pos_init + angle;
+int pos = 0;     // 서보 위치를 저장할 변수를 선언합니다.
+boolean isOn = false;
+
 void setup() { 
 
-  // 블루투스와 전송속도 맞춰줘야 함
+  //블루투스와 전송속도 동기화
   Serial.begin(9600);
   BTSerial.begin(9600);
 
-  // 아두이노의 D5를 이용하여 통신
-  myservo.attach(5);
-}
+  myservo.attach(5);  // D5 : 서보모터
+  pinMode(4, INPUT_PULLUP); // D4 : 버튼
+} 
  
+ 
+void loop() {
 
-// 무한루프
-void loop() { 
-
+  // 블루투스 통신
   if(BTSerial.available()) {
-  
-    delay(300);
-    char c = BTSerial.read();
-    int a = 1;
-    int b = 0x23;
-    Serial.write(c);
-   
-    if(c == '1') {
-      for(pos = 0; pos < 150; pos += 2) {
-        myservo.write(pos);              // 'pos'변수의 위치로 서보를 이동시킵니다.
-        delay(15);                       // 서보 명령 간에 20ms를 기다립니다.
-      } 
-    }
-   
-    if(c == '2') {
-      for(pos = 80; pos>=1; pos -= 2) {                                
-        myservo.write(pos);              // 서보를 반대방향으로 이동합니다.
-        delay(15);                       // 서보 명령 간에 20ms를 기다립니다.
+      char c = BTSerial.read();
+      Serial.write(c); //시리얼 확인용
+ 
+      if(c == '1' && !isOn) { //on
+        isOn = true;
+        turnOn();      
       }
-    }
-
+       
+      if(c == '2' && isOn) { //off
+        isOn = false;
+        turnOff(); 
+      }
+  
   }
 
+  // 버튼
+  if (digitalRead(4) == LOW) {
 
-   if (Serial.available()) {
+    if(!isOn) {
+       isOn = true;
+       turnOn();
+    }else {
+       isOn = false;
+       turnOff();
+    }
+  
+  } 
+
+  // 시리얼통신 (시리얼 확인용)
+  if (Serial.available()) {
     BTSerial.write(Serial.read());
   }
+  
+}
+
+
+// Custom Functions
+
+void turnOn() {
+  for(pos = pos_init; pos > pos_on; pos -= angleSpeed) {
+     myservo.write(pos);
+     delay(delayTime);
+  }
+  myservo.write(pos_init);    
+}
+
+
+void turnOff() {
+  for(pos = pos_init; pos < pos_off; pos += angleSpeed) {
+    myservo.write(pos);
+    delay(delayTime);
+  }
+  myservo.write(pos_init);    
 }
 ```
 
